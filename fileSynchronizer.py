@@ -271,12 +271,41 @@ class FileSynchronizer(threading.Thread):
         filename -- file name to request
         file_dic -- dict with 'ip', 'port', and 'mtime'
         """
-        #YOUR CODE
-        #Step 1. connect to peer and send filename + '\n'
-        #Step 2. read header "Content-Length: <size>\n"
-        #Step 3. read exactly <size> bytes; if short, discard partial file
-        #Step 4. write file to disk (binary), rename from .part when done
-        #Step 5. set mtime using os.utime
+        
+        try: 
+            peer_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            peer_sock.settimeout(10) # timeout for peer connection!
+            peer_sock.connect((file_dic['ip'], file_dic['port']))
+
+            # Request file
+            peer_sock.sendall((filename + '\n').encode('utf-8'))
+
+            header_data = b''
+            while b'\n' not in header_data:
+                chunk = peer_sock.recv(1)
+                if not chunk: break
+                header_data += chunk
+        
+            header_str = header_data.decode('utf-8')
+            filesize = int(header_str.split(': ')[1].strip())
+
+            content = b''
+            while len(content) < filesize:
+                chunk = peer_sock.recv(min(self.BUFFER_SIZE, filesize - len(content)))
+                if not chunk: break
+                content += chunk
+
+            if len(content) == filesize:
+                with open(filename, 'wb') as f:
+                    f.write(content)
+                
+                os.utime(filename, (file_dic['mtime'], file_dic['mtime']))
+            else:
+                print(f"Discarding partial file: {filename}")
+
+            peer_sock.close()
+        except Exception as e:
+            print(f"Syncfile error: {e}")
 
 if __name__ == '__main__':
     parser = optparse.OptionParser(usage="%prog ServerIP ServerPort")
