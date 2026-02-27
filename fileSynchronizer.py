@@ -215,41 +215,53 @@ class FileSynchronizer(threading.Thread):
                 threading.Thread(target=self.process_message, args=(conn,addr)).start()
             except socket.error:
                 break
-            
+
     def sync(self):
         print(('connect to:'+self.trackerhost,self.trackerport))
         #Step 1. send Init msg to tracker (Note init msg only sent once)
         #Since self.msg is already initialized in __init__, you can send directly
         #Hint: on send failure, may terminate
-        #YOUR CODE
 
-        #Step 2. now receive a directory response message from tracker
-        directory_response_message = ''
-        #Hint: read from socket until you receive a full JSON message ending with '\n'
-        #YOUR CODE
-        print('received from tracker:',directory_response_message)
+        try:
+            self.client.sendall(self.msg)
+            #Step 2. now receive a directory response message from tracker
+            while b'\n' not in self._tracker_buf:
+                chunk = self.client.recv(self.BUFFER_SIZE)
+                if not chunk:
+                    raise socket.error("Tracker connection lost.")
+                self._tracker_buf += chunk
 
-        #Step 3. parse the directory response message. If it contains new or
-        #more up-to-date files, request the files from the respective peers.
-        #NOTE: compare the modified time of the files in the message and
-        #that of local files of the same name.
-        #Hint: a. use json.loads to parse the message from the tracker
-        #      b. read all local files, use os.path.getmtime to get the mtime 
-        #         (also note round down to int)
-        #      c. for new or more up-to-date file, you can call syncfile()
-        #      d. use Content-Length header to know file size
-        #      e. if transfer fails, discard partial file
-        #      f. finally, write the file content to disk with the file name, use os.utime
-        #         to set the mtime
-        #YOUR CODE
+            line, self._tracker_buf = self._tracker_buf.split(b'\n', 1)
+            directory_response_message = line.decode('utf-8')
+            print('received from tracker:', directory_response_message)
+
+            directory = json.loads(directory_response_message)
+            local_files = get_files_dic()
+
+            for filename, info in directory_data.items():
+                remote_mtime = info['mtime']
+                remote_ip = info['ip']
+                remote_port = info['port']
+
+                is_self = (remote_port == self.port and remote_ip in ['127.0.0.1', '0.0.0.0', self.host])
+                
+                if not is_self:
+                    if filename not in local_files or remote_mtime > local_files[filename]:
+                        # Hint c: Call syncfile for new/updated files
+                        # Note: syncfile handles hints d, e, and f internally.
+                        self.syncfile(filename, info)
+
 
         #Step 4. construct a KeepAlive message
         #Note KeepAlive msg is sent multiple times, the format can be found in Table 1
-        #use json.dumps to convert python dict to json string.
-        self.msg = #YOUR CODE
+                keepalive_data = {"port": self.port}
+                self.msg = (json.dumps(keepalive_data) + '\n').encode('utf-8') #YOUR CODE
+        except (socket.error, json.JSONDecodeError) as e:
+            self.fatal_tracker("Synchronization cycle failed", e)
 
         #Step 5. start timer
         t = threading.Timer(5, self.sync)
+        t.daemon = True
         t.start()
 
     def syncfile(self, filename, file_dic):
