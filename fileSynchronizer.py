@@ -53,8 +53,15 @@ def get_file_info():
           b. use os.path.getmtime to get mtime, and round down to integer
     """
     file_arr = []
-    #YOUR CODE
 
+    ignore = {'.py', '.so', '.dll'}
+    current_script = os.path.basename(__file__)
+    
+    for entry in os.scandir('.'):
+        if entry.isfile() and entry.name != current_script:
+            if not any(entry.name.endswith(ext) for ext in ignore):
+                mtime = int(os.path.getmtime(entry.path))
+                file_arr.append({'name': entry.name, 'mtime': mtime})
     return file_arr
 
 def get_files_dic():
@@ -62,7 +69,10 @@ def get_files_dic():
     Hint: same filtering rules as get_file_info().
     """
     file_dic = {}
-    #YOUR CODE
+    
+    array = get_file_info()
+    for item in array:
+        file_dic[item['name']] = item['mtime']S
 
     return file_dic
 
@@ -88,8 +98,13 @@ def get_next_avaliable_port(initial_port):
     Return:
     port found to be available; False if no port is available.
     """
-
-    #YOUR CODE
+    
+    currPort = initial_port
+    while currPort <= 65535:
+        if check_port_avaliable(currPort):
+            return currPort
+        currPort += 1
+    return False
 
 
 class FileSynchronizer(threading.Thread):
