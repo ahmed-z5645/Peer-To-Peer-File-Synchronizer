@@ -199,17 +199,23 @@ class FileSynchronizer(threading.Thread):
 
     def run(self):
         #Step 1. connect to tracker; on failure, may terminate
-        #YOUR CODE
+
+        try:
+            self.client.connect((self.trackerhost, self.trackerport))
+        except socket.error as e:
+            self.fatal_tracker("Failed to connect to tracker", e)
+
         t = threading.Timer(2, self.sync)
         t.start()
         print(('Waiting for connections on port %s' % (self.port)))
         while True:
             #Hint: guard accept() with try/except and exit cleanly on failure
-            conn, addr = self.server.accept()
-            threading.Thread(target=self.process_message, args=(conn,addr)).start()
-
-    #Send Init or KeepAlive message to tracker, handle directory response message
-    #and  request files from peers
+            try: 
+                conn, addr = self.server.accept()
+                threading.Thread(target=self.process_message, args=(conn,addr)).start()
+            except socket.error:
+                break
+            
     def sync(self):
         print(('connect to:'+self.trackerhost,self.trackerport))
         #Step 1. send Init msg to tracker (Note init msg only sent once)
