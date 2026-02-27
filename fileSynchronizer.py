@@ -72,7 +72,7 @@ def get_files_dic():
     
     array = get_file_info()
     for item in array:
-        file_dic[item['name']] = item['mtime']S
+        file_dic[item['name']] = item['mtime']
 
     return file_dic
 
@@ -98,7 +98,7 @@ def get_next_avaliable_port(initial_port):
     Return:
     port found to be available; False if no port is available.
     """
-    
+
     currPort = initial_port
     while currPort <= 65535:
         if check_port_avaliable(currPort):
@@ -113,12 +113,12 @@ class FileSynchronizer(threading.Thread):
         threading.Thread.__init__(self)
 
         #Own port and IP address for serving file requests to other peers
-        self.port = #YOUR CODE
-        self.host = #YOUR CODE
+        self.port = port
+        self.host = host
 
         #Tracker IP/hostname and port
-        self.trackerhost = #YOUR CODE
-        self.trackerport = #YOUR CODE
+        self.trackerhost = trackerhost
+        self.trackerport = trackerport
 
         self.BUFFER_SIZE = 8192
 
