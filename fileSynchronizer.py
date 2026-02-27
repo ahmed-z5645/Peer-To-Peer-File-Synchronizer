@@ -58,7 +58,7 @@ def get_file_info():
     current_script = os.path.basename(__file__)
     
     for entry in os.scandir('.'):
-        if entry.isfile() and entry.name != current_script:
+        if entry.is_file() and entry.name != current_script:
             if not any(entry.name.endswith(ext) for ext in ignore):
                 mtime = int(os.path.getmtime(entry.path))
                 file_arr.append({'name': entry.name, 'mtime': mtime})
