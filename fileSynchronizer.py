@@ -123,7 +123,7 @@ class FileSynchronizer(threading.Thread):
         self.BUFFER_SIZE = 8192
 
         #Create a TCP socket to communicate with the tracker
-        self.client = #YOUR CODE
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client.settimeout(180)
         self._tracker_buf = b''
 
@@ -132,11 +132,11 @@ class FileSynchronizer(threading.Thread):
         #Initialize to the Init message that contains port number and file info.
         #Refer to Table 1 in Instructions.pdf for the format of the Init message
         #You can use json.dumps to conver a python dictionary to a json string
-	#Encode using UTF-8
-        self.msg = #YOUR CODE
+	    #Encode using UTF-8
+        self.msg = (json.dumps({"port": self.port, "files": get_file_info()}) + '\n').encode('utf-8')
 
         #Create a TCP socket to serve file requests from peers.
-        self.server = #YOUR CODE
+        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         try:
             self.server.bind((self.host, self.port))
@@ -170,11 +170,32 @@ class FileSynchronizer(threading.Thread):
         conn -- socket object for an accepted connection from a peer
         addr -- IP address of the peer (only used for testing purpose)
         '''
-        #YOUR CODE
-        #Step 1. read the file name terminated by '\n'
-        #Step 2. read content of that file in binary mode
-        #Step 3. send header "Content-Length: <size>\n" then file bytes
-        #Step 4. close conn when you are done.
+        try:
+            #Step 1. read the file name terminated by '\n'
+            request_data = b''
+            while b'\n' not in request_data:
+                chunk = conn.recv(self.BUFFER_SIZE)
+                if not chunk: break
+                request_data += chunk
+
+            filename= request_data.decode('utf-8').strip()
+            #Step 2. read content of that file in binary mode
+            if os.path.exists(filename):
+                filesize = os.path.getsize(filename)
+                header = f"Content-Length: {filesize}\n".encode('utf-8')
+                conn.sendall(header)
+                
+                #Step 3. send header "Content-Length: <size>\n" then file bytes
+                with open(filename, 'rb') as f:
+                    while True:
+                        bytes_read = f.read(self.BUFFER_SIZE)
+                        if not bytes_read: break
+                        conn.sendall(bytes_read)
+        except Exception as e:
+            print(f"Error processing message from {addr}: {e}")
+        finally:
+            #Step 4. close conn when you are done.
+            conn.close()
 
     def run(self):
         #Step 1. connect to tracker; on failure, may terminate
